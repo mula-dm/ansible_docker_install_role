@@ -1,0 +1,77 @@
+---
+- name: "check whether docker exists"
+  shell: command -v docker
+  ignore_errors: True
+  register: result
+  changed_when: false
+  always_run: yes
+  tags:
+    - install_docker
+
+- name: "Create install script temp file path"
+  set_fact:
+    docker_install_script_path: "/tmp/ansible-docker"
+  when:
+    result | failed
+  tags:
+    - install_docker
+
+- name: "Download docker official install script"
+  get_url:
+    dest="{{ docker_install_script_path }}"
+    force=yes
+    url=https://get.docker.com
+    validate_certs=yes
+  when:
+    result | failed
+  tags:
+    - install_docker
+
+- name: "Run the script"
+  command: '/bin/sh {{ docker_install_script_path }}'
+  when:
+    result | failed
+  tags:
+    - install_docker
+
+- name: "Delete downloaded file"
+  file:
+    path="{{ docker_install_script_path }}"
+    state=absent
+  when:
+    result | failed
+  tags:
+    - install_docker
+
+- name: "Install python-pip dependency"
+  apt:
+    pkg="{{ item }}"
+    state=present
+    update_cache=yes
+    cache_valid_time=600
+  with_items:
+    - python-setuptools
+    - curl
+  changed_when: False
+  when:
+    result | failed
+  tags:
+    - install_docker
+
+- name: "Install python-pip"
+  easy_install:
+    name=pip
+    state=present
+  when:
+    result | failed
+  tags:
+    - install_docker
+
+- name: "Install docker-py"
+  pip:
+    name=docker-py
+    state=present
+  when:
+    result | failed
+  tags:
+    - install_docker
